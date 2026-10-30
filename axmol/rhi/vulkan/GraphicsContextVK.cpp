@@ -1681,9 +1681,17 @@ void GraphicsContextImpl::doReadPixels(RenderTarget* rt, std::function<void(cons
     // Submit and wait
     _driver->finishIsolateSubmission(submission);
 
-    // Map and copy out
+    // Map and copy out. Keep vmaMapMemory outside AXASSERT: release builds compile AXASSERT away, which skipped the
+    // map and made the memcpy below read from a null pointer.
     void* mapped = nullptr;
-    AXASSERT(vmaMapMemory(_driver->getVmaAllocator(), stagingAlloc, &mapped) == VK_SUCCESS, "vmaMapMemory failed");
+    res          = vmaMapMemory(_driver->getVmaAllocator(), stagingAlloc, &mapped);
+    if (res != VK_SUCCESS)
+    {
+        VK_LOG_ERROR("vmaMapMemory failed", fmt::format("error code {}", static_cast<int>(res)));
+        vmaDestroyBuffer(_driver->getVmaAllocator(), stagingBuf, stagingAlloc);
+        callback(pbd);
+        return;
+    }
 
     pbd._width  = width;
     pbd._height = height;

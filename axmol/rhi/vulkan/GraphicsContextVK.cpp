@@ -423,7 +423,12 @@ void GraphicsContextImpl::recreateSwapchain()
     }
     if (extent.width == 0 || extent.height == 0)
     {
-        AXLOGE("axmol: Failed to create swapchain: extent width/height is 0");
+        // XL-34: a zero-sized surface (e.g. a minimized window on Windows) can't back a swapchain, creating one aborted
+        // in the depth attachment allocation. Keep the current swapchain and the dirty flag, beginFrame skips frames
+        // until the surface has a positive size again.
+        AXLOGI("axmol: surface extent is 0, skip frame and wait for a positive size to recreate swapchain");
+        _swapchainDirty = true;
+        return;
     }
 
     const auto maxImageCount = caps.maxImageCount == 0 ? (std::numeric_limits<uint32_t>::max)() : caps.maxImageCount;
@@ -543,6 +548,11 @@ bool GraphicsContextImpl::beginFrame()
     {
         vkDeviceWaitIdle(_device);
         recreateSwapchain();
+
+        // XL-34: still dirty while the surface has a zero extent (or swapchain creation failed), skip this frame
+        // before the frame fence is waited and reset.
+        if (_swapchainDirty)
+            return false;
     }
 
     if (_lastError)

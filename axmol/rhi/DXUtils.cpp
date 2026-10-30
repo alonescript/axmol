@@ -119,6 +119,7 @@ int evalulateMaxTexSize(D3D_FEATURE_LEVEL fl)
 {
     switch (fl)
     {
+    case D3D_FEATURE_LEVEL_12_2:  // XL-33: 12_2 (0xc200) used to fall through to the 2048 default
     case D3D_FEATURE_LEVEL_12_1:
     case D3D_FEATURE_LEVEL_12_0:
     case D3D_FEATURE_LEVEL_11_1:
